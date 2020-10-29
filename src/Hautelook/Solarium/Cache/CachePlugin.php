@@ -73,11 +73,15 @@ class CachePlugin extends Plugin
             return;
         }
 
-        if (null === $this->currentRequestCacheProfile->getKey()) {
-            $this->currentRequestCacheProfile->setKey(
-                'solr_' . sha1($event->getRequest()->getUri() . $event->getRequest()->getRawData())
-            );
-        }
+        $keyPrefix = null === $this->currentRequestCacheProfile->getKey()
+            ? ''
+            : $this->currentRequestCacheProfile->getKey();
+        $this->currentRequestCacheProfile->setKey(
+            'solr_'
+            . $keyPrefix
+            . sha1($event->getRequest()->getUri() . $event->getRequest()->getRawData())
+        );
+
         $key = $this->currentRequestCacheProfile->getKey();
 
         if (false === $serializedResponse = $this->getCache()->fetch($key)) {
