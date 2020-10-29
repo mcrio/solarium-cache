@@ -41,6 +41,11 @@ class CachePlugin extends Plugin
 
         $dispatcher->addListener(Events::POST_EXECUTE_REQUEST, array($this, 'onPostExecuteRequest'));
     }
+    
+    public function isSelectHandler($handler) 
+    {
+        return strpos(strtolower($event->getRequest()->getHandler()), 'select') === 0;
+    }
 
     public function onPreCreateRequest(PreCreateRequestEvent $event)
     {
@@ -63,10 +68,14 @@ class CachePlugin extends Plugin
         if (null === $this->currentRequestCacheProfile) {
             return;
         }
+        
+        if (!$this->isSelectHandler($event->getRequest()->getHandler())) {
+            return;
+        }
 
         if (null === $this->currentRequestCacheProfile->getKey()) {
             $this->currentRequestCacheProfile->setKey(
-                sha1($event->getRequest()->getUri())
+                'solr_' . sha1($event->getRequest()->getUri() . $event->getRequest()->getRawData())
             );
         }
         $key = $this->currentRequestCacheProfile->getKey();
@@ -89,6 +98,10 @@ class CachePlugin extends Plugin
     public function onPostExecuteRequest(PostExecuteRequestEvent $event)
     {
         if (null === $this->currentRequestCacheProfile) {
+            return;
+        }
+        
+        if (!$this->isSelectHandler($event->getRequest()->getHandler())) {
             return;
         }
 
