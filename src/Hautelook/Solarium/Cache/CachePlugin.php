@@ -44,7 +44,7 @@ class CachePlugin extends Plugin
     
     public function isSelectHandler($handler) 
     {
-        return strpos(strtolower($event->getRequest()->getHandler()), 'select') === 0;
+        return strpos(strtolower($handler), 'select') === 0;
     }
 
     public function onPreCreateRequest(PreCreateRequestEvent $event)
