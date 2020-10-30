@@ -77,9 +77,7 @@ class CachePlugin extends Plugin
             ? ''
             : $this->currentRequestCacheProfile->getKey();
         $this->currentRequestCacheProfile->setKey(
-            'solr_'
-            . $keyPrefix
-            . sha1($event->getRequest()->getUri() . $event->getRequest()->getRawData())
+            $keyPrefix . sha1($event->getRequest()->getUri() . $event->getRequest()->getRawData())
         );
 
         $key = $this->currentRequestCacheProfile->getKey();
