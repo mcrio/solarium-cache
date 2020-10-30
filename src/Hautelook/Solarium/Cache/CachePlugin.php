@@ -59,8 +59,34 @@ class CachePlugin extends Plugin
 
         $this->currentRequestCacheProfile = new CacheProfile(
             $query->getOption('cache_key'),
-            $query->getOption('cache_lifetime')
+            $query->getOption('cache_lifetime'),
+            $query->getOption('cache_key_priorities')
         );
+    }
+
+    private function getSerializedResponseByPriorityKeys($sha)
+    {
+        /**
+         * key priorities is an array with available key prefixes ordered in a way that
+         * bots key is first and auth user key is last.
+         * If bot does not have cache entry we check if another higher priority key has it and we use the result.
+         */
+        if ($this->currentRequestCacheProfile->getKeyPriorities()) {
+            $found = false;
+            foreach ($this->currentRequestCacheProfile->getKeyPriorities() as $priorityKeyPrefix) {
+                if (!$found) {
+                    if (strpos($this->currentRequestCacheProfile->getKey(), $priorityKeyPrefix) === 0) {
+                        $found = true;
+                    }
+                    continue;
+                }
+                $key = $priorityKeyPrefix . $sha;
+                if (false !== $serializedResponse = $this->getCache()->fetch($key)) {
+                    return $serializedResponse;
+                }
+            }
+        }
+        return false;
     }
 
     public function onPreExecuteRequest(PreExecuteRequestEvent $event)
@@ -76,14 +102,17 @@ class CachePlugin extends Plugin
         $keyPrefix = null === $this->currentRequestCacheProfile->getKey()
             ? ''
             : $this->currentRequestCacheProfile->getKey();
+        $sha = sha1($event->getRequest()->getUri() . $event->getRequest()->getRawData());
         $this->currentRequestCacheProfile->setKey(
-            $keyPrefix . sha1($event->getRequest()->getUri() . $event->getRequest()->getRawData())
+            $keyPrefix . $sha
         );
 
         $key = $this->currentRequestCacheProfile->getKey();
 
         if (false === $serializedResponse = $this->getCache()->fetch($key)) {
-            return;
+            if (false === $serializedResponse = $this->getSerializedResponseByPriorityKeys($sha)) {
+                return;
+            }
         }
 
         if (false === $response = unserialize($serializedResponse)) {
