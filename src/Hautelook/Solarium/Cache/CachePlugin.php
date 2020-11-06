@@ -168,7 +168,7 @@ class CachePlugin extends Plugin
         $data = $solrRequest->getUri()
             . $solrRequest->getQueryString()
             . ','
-            . urldecode($solrRequest->getRawData())
+            . $solrRequest->getRawData()
             . PHP_EOL;
         file_put_contents($logFilePath, $data, FILE_APPEND);
     }
