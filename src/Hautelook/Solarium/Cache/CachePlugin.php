@@ -165,7 +165,10 @@ class CachePlugin extends Plugin
 
     private function logQuery(Request $solrRequest, $logFilePath)
     {
-        $data = $solrRequest->getUri()
+        $data = date("c")
+            . ','
+            . $solrRequest->getUri()
+            . ','
             . $solrRequest->getQueryString()
             . ','
             . $solrRequest->getRawData()
