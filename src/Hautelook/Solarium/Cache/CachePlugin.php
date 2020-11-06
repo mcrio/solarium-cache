@@ -3,6 +3,7 @@
 namespace Hautelook\Solarium\Cache;
 
 use Doctrine\Common\Cache\Cache;
+use Solarium\Core\Client\Request;
 use Solarium\Core\Event\Events;
 use Solarium\Core\Event\PreCreateRequest as PreCreateRequestEvent;
 use Solarium\Core\Event\PreExecuteRequest as PreExecuteRequestEvent;
@@ -41,8 +42,8 @@ class CachePlugin extends Plugin
 
         $dispatcher->addListener(Events::POST_EXECUTE_REQUEST, array($this, 'onPostExecuteRequest'));
     }
-    
-    public function isSelectHandler($handler) 
+
+    public function isSelectHandler($handler)
     {
         return strpos(strtolower($handler), 'select') === 0;
     }
@@ -57,10 +58,15 @@ class CachePlugin extends Plugin
             return;
         }
 
+        $logQueries = $query->getOption('log_queries');
+        $logQueriesFilePath = $query->getOption('log_queries_file_path');
+
         $this->currentRequestCacheProfile = new CacheProfile(
             $query->getOption('cache_key'),
             $query->getOption('cache_lifetime'),
-            $query->getOption('cache_key_priorities')
+            $query->getOption('cache_key_priorities'),
+            empty($logQueries) ? false : $logQueries,
+            empty($logQueriesFilePath) ? null : $logQueriesFilePath
         );
     }
 
@@ -86,6 +92,7 @@ class CachePlugin extends Plugin
                 }
             }
         }
+
         return false;
     }
 
@@ -94,9 +101,13 @@ class CachePlugin extends Plugin
         if (null === $this->currentRequestCacheProfile) {
             return;
         }
-        
+
         if (!$this->isSelectHandler($event->getRequest()->getHandler())) {
             return;
+        }
+
+        if ($this->currentRequestCacheProfile->getLogQueries()) {
+            $this->logQuery($event->getRequest(), $this->currentRequestCacheProfile->getLogFilePath());
         }
 
         $keyPrefix = null === $this->currentRequestCacheProfile->getKey()
@@ -131,7 +142,7 @@ class CachePlugin extends Plugin
         if (null === $this->currentRequestCacheProfile) {
             return;
         }
-        
+
         if (!$this->isSelectHandler($event->getRequest()->getHandler())) {
             return;
         }
@@ -150,5 +161,15 @@ class CachePlugin extends Plugin
         }
 
         return $this->cache;
+    }
+
+    private function logQuery(Request $solrRequest, $logFilePath)
+    {
+        $data = $solrRequest->getUri()
+            . $solrRequest->getQueryString()
+            . ','
+            . urldecode($solrRequest->getRawData())
+            . PHP_EOL;
+        file_put_contents($logFilePath, $data, FILE_APPEND);
     }
 }
